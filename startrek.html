@@ -1,0 +1,1030 @@
+<!DOCTYPE html> <!--HTML버전 선언-->
+<html> <!--HTML문서-->
+	<head> <!--metadata를 포함-->
+		<meta charset="utf-8"> <!--웹브라우저에서 본 html 문서를 utf-8형식으로 인코딩하도록 선언-->
+		<title>Star Trek - play</title> <!--웹 브라우저 탭의 제목을 Star Trek으로 지정-->
+
+    <link rel="stylesheet" href="./style.css">
+    <script src="./script.js"></script>
+		<script>fonts();</script>
+
+		<style>/*문서의 스타일 정의, style태그 안은 CSS문법으로 작성*/
+			/* #startrek{
+				width: 100%;
+				height: 1500px;
+			} */
+			canvas {/*canvas태그에 대하여 다음과 같이 지정*/
+				/* background: #eef;  */
+				/*배경색을 #eef로 지정*/
+				background-image: url(./media/canvas_background.jpg);
+				background-repeat: no-repeat;
+				background-size: 100% 100%;
+				display: block;
+				margin: 0 auto; /*박스모델 margin 상하를 0픽셀, 좌우를 자동으로 지정(자동으로 중앙 맞춰줌)*/
+			}
+		</style>
+	</head>
+	<body> <!--해당 HTML 문서의 텍스트, 하이퍼링크, 이미지, 리스트 등과 같은 콘텐츠들을 포함-->
+		<script>
+			header('Play Star Trek v1.0', './media/startrek.jpg');
+			banner('How to play', './explanation.html', 'Play Star Trek', './startrek.html');
+		</script>
+
+		<!-- <section id="startrek"> -->
+			<canvas id="gameCanvas" width="1000" height="800"></canvas> <!-- canvus태그와 태그의 id, 폭, 높이를 정의한다 -->
+		<!-- </section> -->
+
+		<script>/*동적인 스크립트를 포함, script태그 안은 JavaScript문법으로 작성*/
+			var canvas = document.getElementById('gameCanvas'); //변수 canvus에 id가 gameCanvus인 값을 가져옴
+			var ctx = canvas.getContext('2d'); //canvas태그를 2D형식으로 랜더링하도록 지정
+
+			var frame = 0; //시간의 흐름(frame)
+			var score = 0;
+
+			//------------------------------key handler------------------------------
+			var rightPressed = false; //변수 rightPressed 초기값 false입력
+			var leftPressed = false; //변수 leftPressed 초기값 false입력
+			var upPressed = false;
+			var downPressed = false;
+
+			document.addEventListener('keydown', keyDownHandler, false);
+			//keydown 이벤트가 발생했을 시 keyDownHandler함수 호출, 기본동작을 방지하기 위해 처리기 끝에서 false 반환
+			document.addEventListener('keyup', keyUpHandler, false);
+			//keyup 이벤트가 발생했을 시 keyUpHandler함수 호출, 기본동작을 방지하기 위해 처리기 끝에서 false 반환
+			function keyDownHandler(e) { //keyDownHandler함수 정의 (e는 이벤트 객체)
+				if(e.code == 'ArrowRight') { //발생한 keydown 이벤트가 우측방향키일 때
+					rightPressed = true; //rightPressed에 true값을 입력
+				}
+				else if(e.code == 'ArrowLeft') { //발생한 keydown 이벤트가 좌측방향키일 때
+					leftPressed = true; //leftPressed에 true값을 입력
+				}
+				else if(e.code == 'ArrowUp'){
+					upPressed = true;
+				}
+				else if(e.code == 'ArrowDown'){
+					downPressed = true;
+				}
+			}
+
+			function keyUpHandler(e) { //keyUpHandler함수 정의 (e는 이벤트 객체)
+				if(e.code == 'ArrowRight') { //발생한 keyup 이벤트가 우측방향키일 때
+					rightPressed = false; //rightPressed에 false값을 입력
+				}
+				else if(e.code == 'ArrowLeft') { //발생한 keyup 이벤트가 좌측방향키일 때
+					leftPressed = false; //leftPressed에 false값을 입력
+				}
+				else if(e.code == 'ArrowUp'){
+					upPressed = false;
+				}
+				else if(e.code == 'ArrowDown'){
+					downPressed = false;
+				}
+			}
+
+			//----------------------------------ship----------------------------------
+			var shipSize = 40; //변수 shipSize 정의(비행선의 크기)
+			var shipImg = new Image(); //shipImg의 이미지 객체 정의
+			shipImg.src = "./media/ship.png"; //비행선의 이미지 경로 지정, 삽입
+			var ship = { //변수 ship과 ship의 객체 정의
+				x : (canvas.width - shipSize) / 2, //ship.x: 비행선의 초기 x좌표값(비행선 히트박스의 좌측 끝 x좌표)
+				y : canvas.height - shipSize, //ship.y: 비행선의 초기 y좌표값(비행선 히트박스의 하단 끝 y좌표)
+				w : shipSize, //ship.w: 비행선의 폭
+				h : shipSize, //ship.h: 비행선의 높이
+				life : 5,
+				exp : 0,
+				level : 0,
+				fireRate : 65, //연사속도
+				fireCount : 1, //한 번에 발사하는 탄알 양
+				bulletSpeed : 2, //탄알 속도
+				speed : 1.8, //비행선 속도
+				fireRateLevel : 1,
+				fireCountLevel : 1,
+				bulletSpeedLevel : 1,
+				speedLevel : 1
+			};
+			var expMax = [];
+			expMax[0] = 30;
+
+			function drawShip(){
+				ctx.drawImage(shipImg, ship.x, ship.y, ship.w, ship.h); //canvas에 해당 이미지, 좌표값으로 비행선의 이미지를 그림
+				//감도 높아서 10 -> 5픽셀 바꿔줌
+				if(rightPressed && ship.x < canvas.width - shipSize) {
+					//우측키를 누르고 있고 비행선 우측 끝 x좌표값이 canvas 우측 끝 x좌표값보다 작으면
+					ship.x += ship.speed; //비행선의 x좌표를 10 더함(우측으로 10픽셀 이동)
+				}
+				if(leftPressed && ship.x > 0) {
+					//좌측키를 누르고 있고 비행선 좌측 끝 x좌표값이 canvas 좌측 끝 x좌표값보다 작으면
+					ship.x -= ship.speed; //비행선의 x좌표를 10 뺌(좌측으로 10픽셀 이동)
+				}
+				if(upPressed && ship.y > 0){
+					ship.y -= ship.speed;
+				}
+				if(downPressed && ship.y < canvas.height - shipSize){
+					ship.y += ship.speed;
+				}
+			}
+
+
+			function levelUp(){
+				expMax.push(Math.round(expMax[ship.level]*1.2));
+				ship.level++;
+				createNewNotice(frame + 200, upgrade());
+				ship.exp = 0;
+				ship.life++;
+			}
+
+			function upgrade(){
+				var random = Math.floor(Math.random()*5);
+				if(random == 0){
+					ship.life ++;
+					return("Life ++")
+				}
+				else if(random == 1){
+					if(ship.fireRate > 2){
+						ship.fireRate -= 7;
+						ship.fireRateLevel++;
+						return("Fire Rate ++");
+					}
+					else{
+						upgrade();
+					}
+				}
+				else if(random == 2){
+					if(ship.fireCount<7){
+						ship.fireCount ++;
+						ship.fireCountLevel++;
+						return("Fire Count ++");
+					}
+					else{
+						upgrade();
+					}
+				}
+				else if(random == 3){
+					if(ship.bulletSpeed < 14){
+						ship.bulletSpeed += 2;
+						ship.bulletSpeedLevel++;
+						return("Bullet Speed ++");
+					}
+					else{
+						upgrade();
+					}
+				}
+				else if(random == 4){
+					if(ship.speed < 3){
+						ship.speed += 0.2;
+						ship.speedLevel++;
+						return("Speed ++");
+					}
+					else{
+						upgrade();
+					}
+				}
+			}
+
+
+			function drawLife(){
+				for(var i = 0; i < ship.life; i++){
+					ctx.drawImage(shipImg, 960 - 30 * i, 50, 30, 30);
+				}
+			}
+
+			function drawStatus(){
+				ctx.font="20px Noto Sans KR sans-serif";
+				ctx.textAlign = "left";
+				ctx.fillStyle="lavender";
+				ctx.fillText("<Status>", 50, 70);
+
+				ctx.fillText("Fire Rate :  Lv.", 10, 95);
+				ctx.fillText(ship.fireRateLevel, 150, 95);
+				ctx.fillText(" / ", 160, 95);
+				ctx.fillText("10", 180, 95);
+
+				ctx.fillText("Fire Count :  Lv.", 10, 120);
+				ctx.fillText(ship.fireCountLevel, 157, 120);
+				ctx.fillText(" / ", 167, 120);
+				ctx.fillText("7", 187, 120);
+
+				ctx.fillText("bullet speed :  Lv.", 10, 145);
+				ctx.fillText(ship.bulletSpeedLevel, 177, 145);
+				ctx.fillText(" / ", 187, 145);
+				ctx.fillText("7", 207, 145);
+
+				ctx.fillText("speed :  Lv.", 10, 170);
+				ctx.fillText(ship.speedLevel, 117, 170);
+				ctx.fillText(" / ", 127, 170);
+				ctx.fillText("7", 147, 170);
+			}
+
+
+			var notice={
+				time : 0,
+				text : "",
+				reservationTime : 0,
+				reservationText: ""
+			};
+
+			function checkNotice(){
+				if(notice.reservationTime != 0 && notice.reservationTime <= frame){
+					notice.reservationTime = 0;
+					createNewNotice(frame, notice.reservationText);
+				}
+				else{
+					ctx.textAlign = "center";
+					if(notice.time != 0){
+						if(notice.time + 70 > frame || ((notice.time + 100 < frame) && (notice.time + 170 > frame)) ||
+							((notice.time + 200 < frame) && (notice.time + 270 > frame))){
+							ctx.font="20px Noto Sans KR sans-serif";
+							ctx.fillText(notice.text, ship.x+ ship.w / 2, ship.y - 30);
+						}
+						if(notice.time + 270 < frame){
+							notice.time = 0;
+						}
+					}
+				}
+			}
+
+			function createNewNotice(time, text){
+				if(time == frame){
+					notice.time = time;
+					notice.text = text;
+				}
+				else{
+					notice.reservationTime = time;
+					notice.reservationText = text;
+				}
+			}
+
+
+			//---------------------------------enemy---------------------------------
+			function drawAllEnemies() { //canvas에서 적의 이미지를 그리는 함수 drawAllEnemies정의
+				for(var i = 0; i < enemy1Count; i++) {
+					var enemy1 = enemy1Status[i];
+
+					if (enemy1.status == 0) { //enemy1.status의 값이 0일 때
+						continue; //반복문의 다음으로 넘어감
+					}
+					//이후는 enemy1.status의 값이 1일 때
+					enemy1.y += 2; //enemy1.y에 2를 더해줌(enemy1의 y좌표를 2px만큼 이동시킴, 적이 내려오도록)
+
+					if(enemy1.y + enemy1Size <= canvas.height) {
+						//적의 하단 y좌표가 canvas의 하단 y좌표보다 작거나 같을 때(적이 canvas의 하단에 안 닿았을 때)
+						ctx.drawImage(enemy1.img, enemy1.x, enemy1.y, enemy1.w, enemy1.h);
+						//canvas에 해당 이미지, 좌표값으로 적의 이미지를 그림
+					}
+					else { //적의 하단 y좌표가 cnavas의 하단 y좌표보다 작거나 같지 않을 때(적이 canvas의 하단에 닿았을 때)
+						enemy1.status = 0; //해당 적을 canvas에서 그리지 않음
+					}
+				}
+				for(var i = 0; i < enemy2Count; i++) {
+					var enemy2 = enemy2Status[i];
+
+					if (enemy2.status == 0) { //enemy2.status의 값이 0일 때
+						continue; //반복문의 다음으로 넘어감
+					}
+					//이후는 enemy2.status의 값이 1일 때
+					enemy2.y += 2; //enemy2.y에 2를 더해줌(enemy2의 y좌표를 2px만큼 이동시킴, 적이 내려오도록)
+
+					if(enemy2.y + enemy2Size <= canvas.height) {
+						//적의 하단 y좌표가 canvas의 하단 y좌표보다 작거나 같을 때(적이 canvas의 하단에 안 닿았을 때)
+						ctx.drawImage(enemy2.img, enemy2.x, enemy2.y, enemy2.w, enemy2.h);
+						//canvas에 해당 이미지, 좌표값으로 적의 이미지를 그림
+					}
+					else { //적의 하단 y좌표가 cnavas의 하단 y좌표보다 작거나 같지 않을 때(적이 canvas의 하단에 닿았을 때)
+						enemy2.status = 0; //해당 적을 canvas에서 그리지 않음
+					}
+				}
+				for(var i = 0; i < enemy3Count; i++) {
+					var enemy3 = enemy3Status[i];
+
+					if (enemy3.status == 0) { //enemy3.status의 값이 0일 때
+						continue; //반복문의 다음으로 넘어감
+					}
+					//이후는 enemy3.status의 값이 1일 때
+					enemy3.y += 2; //enemy3.y에 2를 더해줌(enemy3의 y좌표를 2px만큼 이동시킴, 적이 내려오도록)
+
+					if(enemy3.y + enemy3Size <= canvas.height) {
+						//적의 하단 y좌표가 canvas의 하단 y좌표보다 작거나 같을 때(적이 canvas의 하단에 안 닿았을 때)
+						ctx.drawImage(enemy3.img, enemy3.x, enemy3.y, enemy3.w, enemy3.h);
+						//canvas에 해당 이미지, 좌표값으로 적의 이미지를 그림
+						if(frame % 180 == 0){
+							createNewEnemyBullet(enemy3);
+						}
+					}
+					else { //적의 하단 y좌표가 cnavas의 하단 y좌표보다 작거나 같지 않을 때(적이 canvas의 하단에 닿았을 때)
+						enemy3.status = 0; //해당 적을 canvas에서 그리지 않음
+					}
+				}
+				createNewEnemy1(frame * 30, frame * 1.004); //매개변수 probWeight=30 gameLevel=1 createNewEnemy함수 호출
+				createNewEnemy2(frame * 5000, frame * 1.002);
+				createNewEnemy3(frame * 10000, frame * 1.001);
+			}
+
+
+			//---------------------------------enemy1---------------------------------
+			var enemy1Size = 40; //적의 크기를 지정
+			var enemy1Img = new Image(); //enemy1Img의 이미지 객체 정의
+			enemy1Img.src = "./media/enemy1.png"; //적의 이미지 경로 지정, 삽입
+			var enemy1Count = 50; //최대 생성 적의 개수를 지정
+			var enemy1Status = []; //변수 enemy1Status 배열 선언
+			for (var i = 0; i < enemy1Count; i++) { //반복문으로 배열의 값 입력
+				enemy1Status[i] = {//변수 ship과 ship의 객체 정의
+					x : 0, //enemy1Status[i].x 적의 x좌표값(적 히트박스의 좌측 끝 x좌표)
+					y : 0, //enemy1Status[i].y 적의 y좌표값(적 히트박스의 하단 끝 y좌표)
+					w : enemy1Size, //enemy1Status[i].w: 적의 폭
+					h : enemy1Size, //enemy1Status[i].h: 적의 높이
+					img : enemy1Img, //enemy1Status[i].img: 적의 이미지
+					exp : 2,
+					status: 0 //enemy1Status[i].status: 적의 생성 유무(canvas에 그릴지)를 판별하는 객체
+				};
+			}
+
+			function createNewEnemy1(probWeight, gameLevel) { //적을 생성하는 함수(매개변수 probWeight, gameLevel)
+				if(Math.floor(Math.random() * probWeight) < gameLevel) {
+					//Math.floor은 최대 정수 함수 가우스기호 []와 동일
+					//Math.random 0 이상 1 미만의 부동소수점 의사난수 생성
+					//0이상 probWight미만으로 생성한 난수가 gameLevel보다 작을 때
+					//프레임당 gameLevel/probWeight확률로 적 생성
+					for(var i = 0; i < enemy1Count; i++) {
+						var enemy1 = enemy1Status[i];
+
+						if(enemy1.status == 0) { //cnavas에서 아직 생성되지 않은 적일 때
+							enemy1.y = 0; //적의 상단 끝 y좌표는 canvas 상단으로 지정
+							enemy1.x = Math.floor(Math.random() * canvas.width);
+							//적의 좌측 끝 x좌표는 0이상 canvas폭미만 부동소수점 의사난수의 최대 정수
+
+							if(enemy1.x + enemy1Size > canvas.width) { //적의 우측 끝 x좌표가 canvas의 폭을 넘었을 때
+								enemy1.x = canvas.width - enemy1Size; //적의 우측 끝 x좌표가 canvas의 우측 끝 좌표와 동일하게 보정
+							}
+							enemy1.status = 1; //canvas에서 적을 생성하고
+							break; //반복문을 벗어남
+						}
+					}
+				}
+			}
+
+
+			//---------------------------------enemy2---------------------------------
+			var enemy2Size = 40; //적의 크기를 지정
+			var enemy2Img = new Image(); //enemy2Img의 이미지 객체 정의
+			enemy2Img.src = "./media/enemy2.png"; //적의 이미지 경로 지정, 삽입
+			var enemy2Count = 20; //최대 생성 적의 개수를 지정
+			var enemy2Status = []; //변수 enemy2Status 배열 선언
+			for (var i = 0; i < enemy2Count; i++) { //반복문으로 배열의 값 입력
+				enemy2Status[i] = {//변수 ship과 ship의 객체 정의
+					x : 0, //enemy2Status[i].x 적의 x좌표값(적 히트박스의 좌측 끝 x좌표)
+					y : 0, //enemy2Status[i].y 적의 y좌표값(적 히트박스의 하단 끝 y좌표)
+					w : enemy2Size, //enemy2Status[i].w: 적의 폭
+					h : enemy2Size, //enemy2Status[i].h: 적의 높이
+					img : enemy2Img, //enemy2Status[i].img: 적의 이미지
+					exp : 5,
+					status: 0 //enemy2Status[i].status: 적의 생성 유무(canvas에 그릴지)를 판별하는 객체
+				};
+			}
+
+			function createNewEnemy2(probWeight, gameLevel) { //적을 생성하는 함수(매개변수 probWeight, gameLevel)
+				if(Math.floor(Math.random() * probWeight) < gameLevel) {
+					for(var i = 0; i < enemy2Count; i++) {
+						var enemy2 = enemy2Status[i];
+
+						if(enemy2.status == 0) { //cnavas에서 아직 생성되지 않은 적일 때
+							enemy2.y = 0; //적의 상단 끝 y좌표는 canvas 상단으로 지정
+							enemy2.x = Math.floor(Math.random() * canvas.width);
+							//적의 좌측 끝 x좌표는 0이상 canvas폭미만 부동소수점 의사난수의 최대 정수
+
+							if(enemy2.x + enemy2Size > canvas.width) { //적의 우측 끝 x좌표가 canvas의 폭을 넘었을 때
+								enemy2.x = canvas.width - enemy2Size; //적의 우측 끝 x좌표가 cnavas의 우측 끝 좌표와 동일하게 보정
+							}
+							enemy2.status = 1; //cnavas에서 적을 생성하고
+							break; //반복문을 벗어남
+						}
+					}
+				}
+			}
+
+
+			//---------------------------------enemy3---------------------------------
+			var enemy3Size = 100;
+			var enemy3Img = new Image();
+			enemy3Img.src = "./media/enemy3.png";
+			var enemy3Count = 15;
+			var enemy3Status = [];
+			for (var i = 0; i < enemy3Count; i++) {
+				enemy3Status[i] = {
+					x : 0,
+					y : 0,
+					w : enemy3Size,
+					h : enemy3Size,
+					img : enemy3Img,
+					exp : 40,
+					status: 0,
+					life: 30
+				};
+			}
+
+			function createNewEnemy3(probWeight, gameLevel) {
+				if(Math.floor(Math.random() * probWeight) < gameLevel) {
+					for(var i = 0; i < enemy3Count; i++) {
+						var enemy3 = enemy3Status[i];
+
+						if(enemy3.status == 0) {
+							enemy3.y = 0;
+							enemy3.x = Math.floor(Math.random() * canvas.width);
+
+							if(enemy3.x + enemy3Size > canvas.width) {
+								enemy3.x = canvas.width - enemy3Size;
+							}
+							enemy3.status = 1;
+							break;
+						}
+					}
+				}
+			}
+
+
+			//---------------------------------bullet---------------------------------
+
+			var bulletImg = new Image();
+			var bulletStatus = [];
+			const bulletInterval = 2;
+			bulletImg.src = "./media/bullet.png"
+
+			function createNewBullet(){
+				if(frame % ship.fireRate != 0){
+					return;
+				}
+
+				if(ship.fireCount % 2 == 1){
+					for(var i = 0; i < ship.fireCount; i++){
+						var bullet = {};
+						bullet.img = bulletImg;
+						bullet.w = 3;
+						bullet.h = 5;
+						bullet.x = ship.x + (ship.w - bullet.w) / 2 + (bullet.w + bulletInterval)*(i - (ship.fireCount - 1) / 2);
+						bullet.y = ship.y;
+						bullet.status = 1;
+						bulletStatus.push(bullet); //배열 추가
+					}
+				}
+				else{
+					for(var i = 0; i < ship.fireCount; i++){
+						var bullet = {};
+						bullet.img = bulletImg;
+						bullet.w = 3;
+						bullet.h = 5;
+						bullet.x = ship.x + (ship.w - bulletInterval) / 2+ (bullet.w + bulletInterval)*(i - ship.fireCount  / 2);
+						bullet.y = ship.y;
+						bullet.status = 1;
+						bulletStatus.push(bullet); //배열 추가
+					}
+				}
+			}
+
+			function deleteBullet(){
+				for(var i = bulletStatus.length-1; i>=0; i--){
+					var bullet = bulletStatus[i];
+					if(bullet.status == 0){
+						bulletStatus.splice(i, 1);
+					}
+				}
+			}
+
+ 			//bullet 그리기
+			function drawAllBullets() {
+				for(var i = 0; i < bulletStatus.length; i++) {
+					var bullet = bulletStatus[i];
+
+					if (bullet.status == 0) { //bullet.status의 값이 0일 때
+						continue; //반복문의 다음으로 넘어감
+					}
+					//이후는 bullet.status의 값이 1일 때
+					bullet.y -= ship.bulletSpeed; //bullet.y에 2를 더해줌(bullet의 y좌표를 -2px만큼 이동시킴)
+
+					if(bullet.y >= 0) {
+						ctx.drawImage(bullet.img, bullet.x, bullet.y, bullet.w, bullet.h);
+					}
+					else {
+						bullet.status = 0;
+					}
+				}
+				createNewBullet();
+			}
+
+			//----------------------------------탄막----------------------------------
+			var enemyBulletStatus = [];
+			var enemyBulletImg = new Image();
+			enemyBulletImg.src="./media/enemybullet.png";
+
+			function createNewEnemyBullet(enemy){
+				for(var i = 0; i < 8; i++){
+					var enemyBullet = {};
+					enemyBullet.img = enemyBulletImg;
+					enemyBullet.w = 5;
+					enemyBullet.h = 5;
+					enemyBullet.x = enemy.x + (enemy.w - enemyBullet.w)/2;
+					enemyBullet.y = enemy.y + (enemy.h - enemyBullet.h)/2;
+					enemyBullet.direction = i;
+					enemyBullet.status = 1;
+					enemyBullet.time = frame;
+					if(i % 2 == 1){ //대각선
+						enemyBullet.speed = 0.2;
+					}
+					else{
+						enemyBullet.speed = 0.3;
+					}
+					enemyBulletStatus.push(enemyBullet);
+				}
+			}
+
+			function deleteEnemyBullet(){
+				for(var i = enemyBulletStatus.length-1; i >= 0; i--){
+					var enemyBullet = enemyBulletStatus[i];
+					if(enemyBullet.status == 0){
+						enemyBulletStatus.splice(i, 1);
+					}
+				}
+			}
+
+			function drawAllEnemyBullets(){
+				for(var i = 0; i < enemyBulletStatus.length; i++) {
+					var enemyBullet = enemyBulletStatus[i];
+
+					if (enemyBullet.status == 0) {
+						continue;
+					}
+
+					if(enemyBullet.direction == 7 || enemyBullet.direction == 0 || enemyBullet.direction == 1){
+						enemyBullet.y -= enemyBullet.speed;
+					}
+					if(enemyBullet.direction == 1 || enemyBullet.direction == 2 || enemyBullet.direction == 3){
+						enemyBullet.x += enemyBullet.speed;
+					}
+					if(enemyBullet.direction == 3 || enemyBullet.direction == 4 || enemyBullet.direction == 5){
+						enemyBullet.y += enemyBullet.speed;
+					}
+					if(enemyBullet.direction == 5 || enemyBullet.direction == 6 || enemyBullet.direction == 7){
+						enemyBullet.x -= enemyBullet.speed;
+					}
+
+					if((enemyBullet.x >= 0) && (enemyBullet.x + enemyBullet.w <= canvas.width) &&
+						(enemyBullet.y >= 0) && (enemyBullet.y + enemyBullet.h <= canvas.height)) {
+						ctx.drawImage(enemyBullet.img, enemyBullet.x, enemyBullet.y, enemyBullet.w, enemyBullet.h);
+					}
+					else {
+						enemyBullet.status = 0;
+					}
+				}
+			}
+
+			//----------------------------------exp----------------------------------
+			var expStatus = [];
+			var expImg1 = new Image();
+			expImg1.src="./media/exp1.png";
+			var expImg2 = new Image();
+			expImg2.src="./media/exp2.png";
+			var expImg3 = new Image();
+			expImg3.src="./media/exp3.png";
+
+			function createNewExp(enemy){
+				var exp = {};
+				exp.w = 6;
+				exp.h = 6;
+				exp.x = enemy.x + (enemy.w - exp.w)/2;
+				exp.y = enemy.y + (enemy.h - exp.h)/2;
+				exp.value = enemy.exp;
+				exp.status = 1;
+				expStatus.push(exp);
+				if(exp.value == 2){
+					exp.img = expImg1;
+				}
+				else if(exp.value > 2 && exp.value < 4){
+					exp.img = expImg2;
+				}
+				else{
+					exp.img = expImg3;
+				}
+			}
+
+			function deleteExp(){
+				for(var i = expStatus.length-1; i>=0; i--){
+					var exp = expStatus[i];
+					if(exp.status == 0){
+						expStatus.splice(i, 1);
+					}
+				}
+			}
+
+			function drawAllExp(){
+				for(var i = 0; i < expStatus.length; i++) {
+					var exp = expStatus[i];
+
+					if (exp.status == 0) {
+						continue;
+					}
+
+					exp.y += 0.5;
+
+					if(exp.y + exp.h <= canvas.height) {
+						ctx.drawImage(exp.img, exp.x, exp.y, exp.w, exp.h);
+					}
+					else {
+						exp.status = 0;
+					}
+				}
+			}
+
+			function drawExpValue(){
+				ctx.font="20px Noto Sans KR sans-serif";
+				ctx.textAlign = "left";
+				ctx.fillStyle="violet";
+				ctx.fillText("Level : ", 455, 30);
+				ctx.fillText(ship.level, 525, 30)
+				ctx.textAlign = "right";
+				ctx.fillText("EXP : ", 905, 30);
+				ctx.fillText(ship.exp, 930, 30);
+				ctx.fillText(" / ", 950, 30);
+				ctx.fillText(expMax[expMax.length-1], 980, 30);
+			}
+
+
+			//----------------------------------격추----------------------------------
+			//적기와 충돌
+			function checkCrash() { //비행선이 적과 부딪쳤는지 확인하는 함수 정의
+				for(var i = 0; i < enemy1Count; i++) { //반복문을 통해 모든 배열(모든 적들)이 부딪쳤는지 체크
+					var enemy1 = enemy1Status[i];
+					if(enemy1.status == 0) { // enemy1.status의 값이 0이면(status객체는 비행선의 생성유무)
+						continue; //반복문의 다음(i+1)으로 넘어감
+					}
+
+					ship.rx = ship.x + ship.w; //비행선의 x좌표+폭(비행선의 히트박스 우측 끝 x좌표)
+					ship.by = ship.y + ship.h; //비행선의 y좌표+높이(비행선의 히트박스 좌측 아래쪽 끝 y좌표)
+					enemy1.rx = enemy1.x + enemy1.w; //적의 x좌표+폭(적의 히트박스 우측 끝 x좌표)
+					enemy1.by = enemy1.y + enemy1.h; //적의 y좌표+높이(적의 히트박스 좌측 아래쪽 끝 y좌표)
+
+					if((ship.x >= enemy1.x && ship.x <= enemy1.rx) || //비행선의 우측 끝 x좌표가 적의 히트박스 범위이거나
+					   (ship.rx >= enemy1.x && ship.rx <= enemy1.rx) ||
+						 (ship.x <= enemy1.x && ship.rx >= enemy1.rx) ||
+						 (ship.x >= enemy1.x && ship.rx <= enemy1.rx)) { //비행선의 좌측 끝 x좌표가 적의 히트박스 범위일 때
+						if((ship.y >= enemy1.y && ship.y <= enemy1.by) || //비행선의 하단 끝 y좌표가 적의 히트박스 범위이거나
+						   (ship.by >= enemy1.y && ship.by <= enemy1.by) ||
+							 (ship.y <= enemy1.y && ship.by >= enemy1.by) ||
+							 (ship.y >= enemy1.y && ship.by <= enemy1.by)) { //비행선의 상단 끝 y좌표가 적의 히트박스 범위일 때
+								 enemy1.status = 0;
+							return 1; //checkCrash()함수에 1을 반환
+						}
+					}
+				}
+
+				for(var i = 0; i < enemy2Count; i++) {
+					var enemy2 = enemy2Status[i];
+					if(enemy2.status == 0) {
+						continue;
+					}
+
+					ship.rx = ship.x + ship.w;
+					ship.by = ship.y + ship.h;
+					enemy2.rx = enemy2.x + enemy2.w;
+					enemy2.by = enemy2.y + enemy2.h;
+
+					if((ship.x >= enemy2.x && ship.x <= enemy2.rx) ||
+					   (ship.rx >= enemy2.x && ship.rx <= enemy2.rx) ||
+						 (ship.x <= enemy2.x && ship.rx >= enemy2.rx) ||
+						 (ship.x >= enemy2.x && ship.rx <= enemy2.rx)) {
+						if((ship.y >= enemy2.y && ship.y <= enemy2.by) ||
+						   (ship.by >= enemy2.y && ship.by <= enemy2.by) ||
+							 (ship.y <= enemy2.y && ship.by >= enemy2.by) ||
+							 (ship.y >= enemy2.y && ship.by <= enemy2.by)) {
+								 enemy2.status = 0;
+							return 1;
+						}
+					}
+
+					for(var i = 0; i < enemy3Count; i++) {
+						var enemy3 = enemy3Status[i];
+						if(enemy3.status == 0) {
+							continue;
+						}
+
+						ship.rx = ship.x + ship.w;
+						ship.by = ship.y + ship.h;
+						enemy3.rx = enemy3.x + enemy3.w;
+						enemy3.by = enemy3.y + enemy3.h;
+
+						if((ship.x >= enemy3.x && ship.x <= enemy3.rx) ||
+						   (ship.rx >= enemy3.x && ship.rx <= enemy3.rx) ||
+							 (ship.x <= enemy3.x && ship.rx >= enemy3.rx) ||
+							 (ship.x >= enemy3.x && ship.rx <= enemy3.rx)) {
+							if((ship.y >= enemy3.y && ship.y <= enemy3.by) ||
+							   (ship.by >= enemy3.y && ship.by <= enemy3.by) ||
+								 (ship.y <= enemy3.y && ship.by >= enemy3.by) ||
+								 (ship.y >= enemy3.y && ship.by <= enemy3.by)) {
+									 enemy3.status = 0;
+								return 1;
+							}
+						}
+					}
+				}
+
+
+				for(var i = 0; i < enemyBulletStatus.length; i++) {
+					var enemyBullet = enemyBulletStatus[i];
+					if(enemyBullet.status == 0) {
+						continue;
+					}
+
+					ship.rx = ship.x + ship.w;
+					ship.by = ship.y + ship.h;
+					enemyBullet.rx = enemyBullet.x + enemyBullet.w;
+					enemyBullet.by = enemyBullet.y + enemyBullet.h;
+
+					if((ship.x >= enemyBullet.x && ship.x <= enemyBullet.rx) ||
+					   (ship.rx >= enemyBullet.x && ship.rx <= enemyBullet.rx) ||
+						 (ship.x <= enemyBullet.x && ship.rx >= enemyBullet.rx) ||
+						 (ship.x >= enemyBullet.x && ship.rx <= enemyBullet.rx)) {
+						if((ship.y >= enemyBullet.y && ship.y <= enemyBullet.by) ||
+						   (ship.by >= enemyBullet.y && ship.by <= enemyBullet.by) ||
+							 (ship.y <= enemyBullet.y && ship.by >= enemyBullet.by) ||
+							 (ship.y >= enemyBullet.y && ship.by <= enemyBullet.by)) {
+ 							enemyBullet.status = 0;
+							return 1;
+						}
+					}
+				}
+				return 0; //checkCrash()함수에 0을 반환(비행선과 부딪친 적이 하나도 없을 때)
+			}
+
+
+			//탄막 적기 격추
+			function checkShootDown(){
+				for(var i = 0; i < enemy1Count; i++){
+					var enemy = enemy1Status[i];
+					if(enemy.status == 0){
+						continue;
+					}
+					for(var j = 0; j < bulletStatus.length; j++){
+						var bullet = bulletStatus[j]
+						if(bullet.status == 0){
+							continue;
+						}
+
+						bullet.rx = bullet.x + bullet.w;
+						bullet.by = bullet.y + bullet.h;
+						enemy.rx = enemy.x + enemy.w;
+						enemy.by = enemy.y + enemy.h;
+
+						if((bullet.x >= enemy.x && bullet.x <= enemy.rx) ||
+							 (bullet.rx >= enemy.x && bullet.rx <= enemy.rx) ||
+							 (bullet.x <= enemy.x && bullet.rx >= enemy.rx) ||
+							 (bullet.x >= enemy.x && bullet.rx <= enemy.rx)) {
+							if((bullet.y >= enemy.y && bullet.y <= enemy.by) ||
+								 (bullet.by >= enemy.y && bullet.by <= enemy.by) ||
+								 (bullet.y <= enemy.y && bullet.by >= enemy.by) ||
+								 (bullet.y >= enemy.y && bullet.by <= enemy.by)) {
+								bullet.status = 0;
+								enemy.status = 0;
+								createNewExp(enemy);
+							}
+						}
+					}
+				}
+
+				for(var i = 0; i < enemy2Count; i++){
+					var enemy = enemy2Status[i];
+					if(enemy.status == 0){
+						continue;
+					}
+					for(var j = 0; j < bulletStatus.length; j++){
+						var bullet = bulletStatus[j]
+						if(bullet.status == 0){
+							continue;
+						}
+
+						bullet.rx = bullet.x + bullet.w;
+						bullet.by = bullet.y + bullet.h;
+						enemy.rx = enemy.x + enemy.w;
+						enemy.by = enemy.y + enemy.h;
+
+						if((bullet.x >= enemy.x && bullet.x <= enemy.rx) ||
+							 (bullet.rx >= enemy.x && bullet.rx <= enemy.rx) ||
+							 (bullet.x <= enemy.x && bullet.rx >= enemy.rx) ||
+							 (bullet.x >= enemy.x && bullet.rx <= enemy.rx)) {
+							if((bullet.y >= enemy.y && bullet.y <= enemy.by) ||
+								 (bullet.by >= enemy.y && bullet.by <= enemy.by) ||
+								 (bullet.y <= enemy.y && bullet.by >= enemy.by) ||
+								 (bullet.y >= enemy.y && bullet.by <= enemy.by)) {
+								bullet.status = 0;
+								enemy.status = 0;
+								createNewExp(enemy);
+								createNewEnemyBullet(enemy);
+							}
+						}
+					}
+				}
+
+				for(var i = 0; i < enemy3Count; i++){
+					var status;
+					var enemy = enemy3Status[i];
+					if(enemy.status == 0){
+						continue;
+					}
+					for(var j = 0; j < bulletStatus.length; j++){
+						var bullet = bulletStatus[j]
+						if(bullet.status == 0){
+							continue;
+						}
+
+						bullet.rx = bullet.x + bullet.w;
+						bullet.by = bullet.y + bullet.h;
+						enemy.rx = enemy.x + enemy.w;
+						enemy.by = enemy.y + enemy.h;
+						status = bullet.status;
+
+						if((bullet.x >= enemy.x && bullet.x <= enemy.rx) ||
+							 (bullet.rx >= enemy.x && bullet.rx <= enemy.rx) ||
+							 (bullet.x <= enemy.x && bullet.rx >= enemy.rx) ||
+							 (bullet.x >= enemy.x && bullet.rx <= enemy.rx)) {
+							if((bullet.y >= enemy.y && bullet.y <= enemy.by) ||
+								 (bullet.by >= enemy.y && bullet.by <= enemy.by) ||
+								 (bullet.y <= enemy.y && bullet.by >= enemy.by) ||
+								 (bullet.y >= enemy.y && bullet.by <= enemy.by)) {
+								bullet.status = 0;
+								enemy.life --;
+							}
+						}
+						if(bullet.status == 0 && bullet.status != status){
+							createNewExp(enemy);
+						}
+					}
+				}
+			}
+
+			//경험치 획득
+			function gain(){
+				for(var i = 0; i < expStatus.length; i++) {
+					var exp = expStatus[i];
+					if(exp.status == 0) {
+						continue;
+					}
+
+					ship.rx = ship.x + ship.w;
+					ship.by = ship.y + ship.h;
+					exp.rx = exp.x + exp.w;
+					exp.by = exp.y + exp.h;
+
+					if((ship.x >= exp.x && ship.x <= exp.rx) ||
+					   (ship.rx >= exp.x && ship.rx <= exp.rx) ||
+						 (ship.x <= exp.x && ship.rx >= exp.rx) ||
+						 (ship.x >= exp.x && ship.rx <= exp.rx)) {
+						if((ship.y >= exp.y && ship.y <= exp.by) ||
+						   (ship.by >= exp.y && ship.by <= exp.by) ||
+							 (ship.y <= exp.y && ship.by >= exp.by) ||
+							 (ship.y >= exp.y && ship.by <= exp.by)) {
+							ship.exp += exp.value;
+							exp.status = 0;
+						}
+					}
+				}
+			}
+
+
+			//---------------------------------score---------------------------------
+			function drawScore(){
+				ctx.textAlign = "left";
+				ctx.font="20px Noto Sans KR sans-serif";
+				ctx.fillStyle="violet";
+				ctx.fillText("Score : ", 10, 30);
+				ctx.fillText(getScore(), 80, 30);
+			}
+
+			function countScore(){
+				score ++;
+			}
+
+			function getScore(){
+				var temp = score + ship.exp;
+				for(var i = 0; i < expMax.length - 1; i++){
+					temp += expMax.length;
+				}
+				return temp;
+			}
+
+			//-------------------------------game over-------------------------------
+			function gameOver(){
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				enableScrolling();
+				drawScore();
+				drawExpValue();
+				drawStatus();
+
+				ctx.textAlign = "center";
+				ctx.fillStyle="aquamarine";
+				ctx.font="20px Noto Sans KR sans-serif";
+				ctx.fillStyle="white";
+				ctx.fillText("최종 점수는 " + getScore() + "점 입니다.", canvas.width/2, 250);
+				ctx.fillText("후손들은 당신의 죽음을 기억할 것입니다..!", canvas.width/2, 320);
+				ctx.fillText("F5를 누르면 새로고침하여 환생합니다.", canvas.width/2, 390);
+				ctx.fillText("미워도 다시 한 번!", canvas.width/2, 460);
+
+				requestAnimationFrame(gameOver);
+			}
+
+
+			//---------------------------------스크롤---------------------------------
+			function disableScrolling(){
+			    var x=window.scrollX;
+			    var y=window.scrollY;
+			    window.onscroll=function(){window.scrollTo(x, y);};
+			}
+
+			function enableScrolling(){
+			    window.onscroll=function(){};
+			}
+
+
+
+			//--------------------------------canavus--------------------------------
+			function draw() { //canvas에서 비행선과 적의 이미지를 그리는 함수 draw()정의
+				ctx.clearRect(0, 0, canvas.width, canvas.height); //canvas 안의 전체 요소를 지움
+				disableScrolling()
+				frame++;
+				drawAllEnemies(); //drawAllEnemies()를 호출하여 적의 이미지를 그림
+				drawAllBullets();
+				drawAllExp();
+				drawAllEnemyBullets();
+				drawShip();
+				drawLife();
+				drawExpValue();
+				countScore();
+				drawScore();
+				drawStatus();
+
+				checkShootDown();
+				checkNotice();
+				deleteBullet();
+
+				gain();
+				deleteExp();
+				deleteEnemyBullet();
+
+				if(ship.exp >= expMax[ship.level]){
+					createNewNotice(frame, "Level Up! ^^7");
+					levelUp();
+				}
+
+				if(checkCrash()) { //checkCrash()함수에서 1을 반환하면
+					createNewNotice(frame, "Crash ㅠ.ㅠ");
+					ship.life--;
+				}
+				if(ship.life <= 0){
+					gameOver();
+					return;
+				}
+				requestAnimationFrame(draw); //리페인트 작업을 수행(바뀐 화면을 최신화해서 그림)
+			}
+
+			//-------------------------------초기 화면-------------------------------
+
+			function gameStart(){
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+				frame++;
+				drawShip();
+				drawLife();
+				drawAllBullets();
+				drawExpValue();
+				drawScore();
+				drawStatus();
+
+				ctx.textAlign = "center";
+				ctx.font="20px Noto Sans KR sans-serif";
+				ctx.fillStyle="aquamarine";
+				ctx.fillText("게임이 시작되면 스크롤이 고정됩니다.", canvas.width/2, 250);
+				ctx.fillText("게임설명을 읽지 않으신 분은 How to play를 읽고 오시길 바랍니다.", canvas.width/2, 320);
+				ctx.fillText("아무 방향키를 누르면 게임이 시작됩니다.", canvas.width/2, 390);
+				ctx.fillText("전쟁에서 승리하여 지구를 지켜주세요!", canvas.width/2, 460);
+				ctx.fillText("건투를 빕니다...", canvas.width/2, 530);
+
+				// canvas.onclick = function(e){
+				// 	x = e.clientX - ctx.canvas.offsetLeft;
+				// 	y = e.clientY - ctx.canvas.offsetTop;
+				// 	if(x >= 360 && x <= 640 && y >= 310 && y <= 380){
+				// 		draw();
+				// 	}
+				// }
+
+				if(rightPressed || leftPressed || upPressed || downPressed) {
+					draw();
+					return;
+				}
+
+				requestAnimationFrame(gameStart); //리페인트 작업을 수행(바뀐 화면을 최신화해서 그림)
+			}
+
+
+			//------------------------------------------------------------------------
+
+			gameStart();
+
+			footer();
+		</script>
+	</body>
+</html>
