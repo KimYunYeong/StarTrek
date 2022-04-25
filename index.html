@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Star Trek - Home</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="./script.js"></script>
+		<script>fonts();</script>
+
+    <style>
+      .btn{
+        width: 168px;
+        height: 44px;
+        line-height: 40px;
+        margin: auto;
+      }
+      .btn p{
+        transition-duration: 0.5s;
+        text-align: center;
+        margin: auto;
+        border: 2px;
+        border-style: solid;
+      }
+
+
+      #startrek{
+        height: 100vh;
+        background-image: url(./media/main.jpg);
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+      }
+      #startrek .content{
+        position: absolute;
+        height: 226px;
+        top: 48%;
+        left: 50%;
+        transform: translate(-50%, -50%);/*<div>태그가 웹 중앙에 오도록*/
+      }
+      #startrek .content h1{
+        margin: 0;
+        font-weight: 900;
+        font-size: 70px;
+        color: white;
+        text-align: center;
+      }
+      #startrek .content h2{
+        margin-top: 20px;
+        margin-bottom: 35px;
+        font-weight: 300;
+        font-size: 18px;
+        color: white;
+        text-align: center;
+      }
+      #startrek .content .btn p{
+        border-color: white;
+        color: white;
+        height: 40px;
+      }
+      #startrek .content .btn p:hover{
+        color: black;
+        background-color: white;
+      }
+
+
+      #patchnote{
+        height: 800px;
+        background-color: #2d2d2d;
+        text-align: center;
+      }
+      #patchnote .content{
+        width: 70%;/*flex 비율 분배 몰라서 가운데로 모으기*/
+        height: 100%;
+        margin-left: 15%;
+        margin-right: 15%;
+      }
+      #patchnote .content .array{
+        display: flex;
+      }
+      #patchnote .content h1{
+        vertical-align: middle;
+        width: 100%;
+        margin: 0;
+        padding: 120px 0;
+        color: white;
+        font-size: 50px;
+      }
+      #patchnote .content h2{
+        color: white;
+      }
+      #patchnote .content p{
+        color: #a5a3a0;
+      }
+      #patchnote .btn{
+        position: relative;
+        top: 10%;
+      }
+      #patchnote .btn p{
+        color: #2d2d2d;
+        background-color: white;
+        height: 100%;
+        width: 100%;
+        border: 0;
+      }
+      #patchnote .btn p:hover{
+        color: white;
+        background-color: #296671;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="startrek">
+      <script>
+        header_nav();
+      </script>
+      <div class="content">
+        <h1>Star Trek v1.0</h1>
+        <h2>PKNU CSE Assignment</h2>
+        <div class="btn">
+          <a href="./startrek.html">
+            <p>PLAY US</p>
+          </a>
+      </div>
+    </section>
+
+
+    <section id="patchnote">
+      <div class="content">
+        <h1>Patch Note</h1>
+        <div class="array">
+          <div>
+            <img src="" style="width: 150px; height: 150px;">
+            <h2></h2>
+            <p></p>
+          </div>
+          <div>
+            <img src="" style="width: 150px; height: 150px;">
+            <h2></h2>
+            <p></p>
+          </div>
+          <div>
+            <img src="" style="width: 150px; height: 150px;">
+            <h2></h2>
+            <p></p>
+          </div>
+        </div>
+        <div class="btn">
+          <a href="./patchnote.html">
+            <p>VIEW MORE</p>
+          </a>
+        </div>
+      </div>
+    </section>
+
+
+    <script>
+      footer();
+    </script>
+  </body>
+</html>
